@@ -1,0 +1,26 @@
+name: agent-gate
+
+on:
+  pull_request:
+    paths: ["agentkit/**", "data/**", "tests/**", "scripts/**", "pyproject.toml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+
+      # 全部用例离线可跑：不依赖网络、不依赖 API Key、不读仓库里的 out/ 索引
+      - name: unit tests
+        run: pytest -q
+
+      # 检索质量门禁：把 eval 的数字变成退出码。
+      # 里面有一条硬约束 —— 重排的 recall / MRR 不得低于 recall-only。
+      # 没有这条线，"调参把指标调坏了"只能靠人肉比对报表发现。
+      - name: retrieval quality gate
+        run: python scripts/quality_gate.py --k 4 --min-recall 0.90 --min-mrr 0.80

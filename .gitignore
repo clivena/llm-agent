@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# 构建产物与运行产物：索引是 ingest 生成的，不该进仓库
+build/
+dist/
+*.egg-info/
+out/
+
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 本地实验用的临时文件
+*.log
+scratch/
+.env
+.DS_Store

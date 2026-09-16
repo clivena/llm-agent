@@ -1,0 +1,110 @@
+{
+  "note": "检索评测集。expected_sources 是文件名级 ground truth，expected_keywords 把判定从文件级收紧到段落级：块文本里必须出现关键词才算相关。",
+  "cases": [
+    {
+      "query": "配额是怎么保证不超发的？",
+      "expected_sources": ["02-gateway-and-quota.md"],
+      "expected_keywords": ["Lua", "原子"]
+    },
+    {
+      "query": "缓存组件挂了，请求会被拒绝吗？",
+      "expected_sources": ["02-gateway-and-quota.md"],
+      "expected_keywords": ["放行"]
+    },
+    {
+      "query": "为什么写账本不能同步做？",
+      "expected_sources": ["02-gateway-and-quota.md"],
+      "expected_keywords": ["阻塞"]
+    },
+    {
+      "query": "输入输出为什么要分开计价？",
+      "expected_sources": ["02-gateway-and-quota.md"],
+      "expected_keywords": ["单价"]
+    },
+    {
+      "query": "缓存键为什么必须带模型维度？",
+      "expected_sources": ["03-cache-and-routing.md"],
+      "expected_keywords": ["命名空间"]
+    },
+    {
+      "query": "相似度不够的时候缓存怎么处理？",
+      "expected_sources": ["03-cache-and-routing.md"],
+      "expected_keywords": ["未命中"]
+    },
+    {
+      "query": "什么条件下会触发级联升级？",
+      "expected_sources": ["03-cache-and-routing.md"],
+      "expected_keywords": ["升级"]
+    },
+    {
+      "query": "一致性系数为什么会算出满分？",
+      "expected_sources": ["04-eval-methodology.md"],
+      "expected_keywords": ["无定义"]
+    },
+    {
+      "query": "怎么衡量裁判的位置偏见？",
+      "expected_sources": ["04-eval-methodology.md"],
+      "expected_keywords": ["翻转率"]
+    },
+    {
+      "query": "提示词回归用什么指标卡关？",
+      "expected_sources": ["04-eval-methodology.md"],
+      "expected_keywords": ["通过率"]
+    },
+    {
+      "query": "切块为什么要在段落边界断开？",
+      "expected_sources": ["05-agent-orchestration.md"],
+      "expected_keywords": ["句末"]
+    },
+    {
+      "query": "工具执行失败会不会中断整轮问答？",
+      "expected_sources": ["05-agent-orchestration.md"],
+      "expected_keywords": ["回灌"]
+    },
+    {
+      "query": "召回为什么取回的条数比最终用的多？",
+      "expected_sources": ["05-agent-orchestration.md"],
+      "expected_keywords": ["候选"]
+    },
+    {
+      "query": "多轮对话历史超预算怎么处理？",
+      "expected_sources": ["05-agent-orchestration.md"],
+      "expected_keywords": ["摘要"]
+    },
+    {
+      "query": "引用为什么必须记录字符区间？",
+      "expected_sources": ["05-agent-orchestration.md"],
+      "expected_keywords": ["区间"]
+    },
+    {
+      "query": "追踪标识为什么要回写到响应头？",
+      "expected_sources": ["06-observability.md"],
+      "expected_keywords": ["回写"]
+    },
+    {
+      "query": "出错时应该返回什么状态码？",
+      "expected_sources": ["06-observability.md"],
+      "expected_keywords": ["状态码"]
+    },
+    {
+      "query": "密钥应该保存在什么地方？",
+      "expected_sources": ["07-tenant-isolation.md"],
+      "expected_keywords": ["环境变量"]
+    },
+    {
+      "query": "为什么日志里不记录完整提示词？",
+      "expected_sources": ["07-tenant-isolation.md"],
+      "expected_keywords": ["脱敏"]
+    },
+    {
+      "query": "本地为什么连不上自己的服务？",
+      "expected_sources": ["08-deployment.md"],
+      "expected_keywords": ["回环"]
+    },
+    {
+      "query": "平台由哪几个子系统构成？",
+      "expected_sources": ["01-platform-overview.md"],
+      "expected_keywords": ["子系统"]
+    }
+  ]
+}
