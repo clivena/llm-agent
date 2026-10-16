@@ -1,5 +1,5 @@
 {
-  "note": "检索评测集。expected_sources 是文件名级 ground truth，expected_keywords 把判定从文件级收紧到段落级：块文本里必须出现关键词才算相关。",
+  "note": "检索评测集。expected_sources 是文件名级 ground truth，expected_keywords 把判定从文件级收紧到段落级：块文本里必须出现关键词才算相关。查询刻意不使用语料原文的整句，只保留少量术语以模拟真实提问的用词。",
   "cases": [
     {
       "query": "配额是怎么保证不超发的？",
@@ -105,6 +105,571 @@
       "query": "平台由哪几个子系统构成？",
       "expected_sources": ["01-platform-overview.md"],
       "expected_keywords": ["子系统"]
+    },
+    {
+      "query": "上游已经过载的时候重试会有什么后果？",
+      "expected_sources": ["16-circuit-breaker-and-fallback.md"],
+      "expected_keywords": ["持续性失败", "偶发失败"]
+    },
+    {
+      "query": "熔断器的半开状态放行几个探测请求？",
+      "expected_sources": ["16-circuit-breaker-and-fallback.md"],
+      "expected_keywords": ["半开"]
+    },
+    {
+      "query": "熔断跳闸要不要把已经扣掉的配额退回去？",
+      "expected_sources": ["16-circuit-breaker-and-fallback.md"],
+      "expected_keywords": ["回滚"]
+    },
+    {
+      "query": "重试风暴是怎么形成的？",
+      "expected_sources": ["17-retry-and-idempotency.md"],
+      "expected_keywords": ["重试风暴"]
+    },
+    {
+      "query": "退避之外为什么还要加随机抖动？",
+      "expected_sources": ["17-retry-and-idempotency.md"],
+      "expected_keywords": ["抖动"]
+    },
+    {
+      "query": "幂等键能不能用提示词内容做哈希？",
+      "expected_sources": ["17-retry-and-idempotency.md"],
+      "expected_keywords": ["幂等键"]
+    },
+    {
+      "query": "令牌桶和漏桶的限制对象有什么不同？",
+      "expected_sources": ["18-rate-limiting-algorithms.md"],
+      "expected_keywords": ["令牌桶"]
+    },
+    {
+      "query": "固定窗口计数器有什么边界问题？",
+      "expected_sources": ["18-rate-limiting-algorithms.md"],
+      "expected_keywords": ["边界", "滑动窗口"]
+    },
+    {
+      "query": "限流的计数为什么必须原子执行？",
+      "expected_sources": ["18-rate-limiting-algorithms.md"],
+      "expected_keywords": ["原子", "Lua"]
+    },
+    {
+      "query": "向量库选型真正的分水岭是什么？",
+      "expected_sources": ["19-vector-store-selection.md"],
+      "expected_keywords": ["数据规模"]
+    },
+    {
+      "query": "先检索后过滤为什么浪费计算？",
+      "expected_sources": ["19-vector-store-selection.md"],
+      "expected_keywords": ["选择率"]
+    },
+    {
+      "query": "块标识为什么不能用库自增主键？",
+      "expected_sources": ["19-vector-store-selection.md"],
+      "expected_keywords": ["稳定哈希", "内容派生"]
+    },
+    {
+      "query": "向量检索在哪类词上表现最差？",
+      "expected_sources": ["20-hybrid-retrieval.md"],
+      "expected_keywords": ["专有名词"]
+    },
+    {
+      "query": "两路分数为什么不能直接相加？",
+      "expected_sources": ["20-hybrid-retrieval.md"],
+      "expected_keywords": ["无界", "BM25"]
+    },
+    {
+      "query": "倒数排名融合丢掉了哪类信息？",
+      "expected_sources": ["20-hybrid-retrieval.md"],
+      "expected_keywords": ["倒数排名融合"]
+    },
+    {
+      "query": "查询扩写为什么会引入额外的假阳性？",
+      "expected_sources": ["21-query-rewriting.md"],
+      "expected_keywords": ["假阳性", "假答案"]
+    },
+    {
+      "query": "合并多路召回时去重按什么做？",
+      "expected_sources": ["21-query-rewriting.md"],
+      "expected_keywords": ["块标识"]
+    },
+    {
+      "query": "什么情况下才值得触发查询改写？",
+      "expected_sources": ["21-query-rewriting.md"],
+      "expected_keywords": ["阈值"]
+    },
+    {
+      "query": "双塔和交叉编码器的成本结构差在哪？",
+      "expected_sources": ["22-rerank-model-selection.md"],
+      "expected_keywords": ["交叉编码器", "双塔"]
+    },
+    {
+      "query": "候选池大小为什么决定了重排的上限？",
+      "expected_sources": ["22-rerank-model-selection.md"],
+      "expected_keywords": ["天花板"]
+    },
+    {
+      "query": "重排服务不可用时应该怎么办？",
+      "expected_sources": ["22-rerank-model-selection.md"],
+      "expected_keywords": ["降级"]
+    },
+    {
+      "query": "把整份知识库塞进上下文有什么代价？",
+      "expected_sources": ["23-long-context-vs-rag.md"],
+      "expected_keywords": ["稀释"]
+    },
+    {
+      "query": "长上下文出现之后检索还有意义吗？",
+      "expected_sources": ["23-long-context-vs-rag.md"],
+      "expected_keywords": ["排序"]
+    },
+    {
+      "query": "什么样的查询不需要走检索？",
+      "expected_sources": ["23-long-context-vs-rag.md"],
+      "expected_keywords": ["集中", "分散"]
+    },
+    {
+      "query": "输出校验只做语法层为什么不够？",
+      "expected_sources": ["24-structured-output.md"],
+      "expected_keywords": ["可引用"]
+    },
+    {
+      "query": "校验失败之后该重试还是改提示词？",
+      "expected_sources": ["24-structured-output.md"],
+      "expected_keywords": ["重试"]
+    },
+    {
+      "query": "校验通过率为什么要单独统计？",
+      "expected_sources": ["24-structured-output.md"],
+      "expected_keywords": ["通过率"]
+    },
+    {
+      "query": "工具描述为什么比函数签名更重要？",
+      "expected_sources": ["25-tool-calling-protocol.md"],
+      "expected_keywords": ["负向说明"]
+    },
+    {
+      "query": "工具执行失败是中断整轮还是回灌错误？",
+      "expected_sources": ["25-tool-calling-protocol.md"],
+      "expected_keywords": ["回灌"]
+    },
+    {
+      "query": "注册的工具数量变多会有什么影响？",
+      "expected_sources": ["25-tool-calling-protocol.md"],
+      "expected_keywords": ["选择准确率"]
+    },
+    {
+      "query": "评测集里的难样本一般从哪里来？",
+      "expected_sources": ["26-eval-set-construction.md"],
+      "expected_keywords": ["点踩", "反例"]
+    },
+    {
+      "query": "评测集泄漏在检索任务里表现成什么样？",
+      "expected_sources": ["26-eval-set-construction.md"],
+      "expected_keywords": ["字面重合", "泄漏"]
+    },
+    {
+      "query": "评测集为什么必须包含期望被拒答的样本？",
+      "expected_sources": ["26-eval-set-construction.md"],
+      "expected_keywords": ["拒答"]
+    },
+    {
+      "query": "标注者给出同一个标签时一致性系数怎么算？",
+      "expected_sources": ["27-human-annotation.md"],
+      "expected_keywords": ["无定义"]
+    },
+    {
+      "query": "样本量只有十几条时一致性系数能用吗？",
+      "expected_sources": ["27-human-annotation.md"],
+      "expected_keywords": ["置信区间"]
+    },
+    {
+      "query": "人工标注的标签要不要被质疑？",
+      "expected_sources": ["27-human-annotation.md"],
+      "expected_keywords": ["抽查样本"]
+    },
+    {
+      "query": "实验分流的最小单位该怎么选？",
+      "expected_sources": ["28-online-ab-testing.md"],
+      "expected_keywords": ["分流"]
+    },
+    {
+      "query": "灰度发布和实验能不能合并成一件事？",
+      "expected_sources": ["28-online-ab-testing.md"],
+      "expected_keywords": ["灰度"]
+    },
+    {
+      "query": "回滚条件应该在什么时候确定？",
+      "expected_sources": ["28-online-ab-testing.md"],
+      "expected_keywords": ["回滚条件"]
+    },
+    {
+      "query": "响应时间的平均值为什么没有参考价值？",
+      "expected_sources": ["29-metrics-and-slo.md"],
+      "expected_keywords": ["分位数"]
+    },
+    {
+      "query": "多个实例的分位数能直接取平均吗？",
+      "expected_sources": ["29-metrics-and-slo.md"],
+      "expected_keywords": ["直方图", "跨实例"]
+    },
+    {
+      "query": "告警应该按症状还是按原因来配？",
+      "expected_sources": ["29-metrics-and-slo.md"],
+      "expected_keywords": ["症状"]
+    },
+    {
+      "query": "为什么只统计总花费等于没有统计？",
+      "expected_sources": ["30-cost-attribution.md"],
+      "expected_keywords": ["分账"]
+    },
+    {
+      "query": "缓存省下来的钱为什么不能直接减掉？",
+      "expected_sources": ["30-cost-attribution.md"],
+      "expected_keywords": ["节省"]
+    },
+    {
+      "query": "没有配置单价的模型成本该怎么处理？",
+      "expected_sources": ["30-cost-attribution.md"],
+      "expected_keywords": ["单价", "估算"]
+    },
+    {
+      "query": "降级省下的成本为什么不能算成优化？",
+      "expected_sources": ["30-cost-attribution.md"],
+      "expected_keywords": ["降级"]
+    },
+    {
+      "query": "给每个租户同样的额度算是公平吗？",
+      "expected_sources": ["31-tenant-fairness.md"],
+      "expected_keywords": ["保障", "上限"]
+    },
+    {
+      "query": "超出容量时排队和丢弃各有什么代价？",
+      "expected_sources": ["31-tenant-fairness.md"],
+      "expected_keywords": ["有界队列", "排队"]
+    },
+    {
+      "query": "租户优先级除了关键程度还看什么？",
+      "expected_sources": ["31-tenant-fairness.md"],
+      "expected_keywords": ["成本贡献", "可预测"]
+    },
+    {
+      "query": "脱敏应该在什么位置执行？",
+      "expected_sources": ["32-data-masking.md"],
+      "expected_keywords": ["上游之前"]
+    },
+    {
+      "query": "需要还原的脱敏怎么实现？",
+      "expected_sources": ["32-data-masking.md"],
+      "expected_keywords": ["映射"]
+    },
+    {
+      "query": "检测敏感信息只靠正则可以吗？",
+      "expected_sources": ["32-data-masking.md"],
+      "expected_keywords": ["词表"]
+    },
+    {
+      "query": "引入检索之后注入面为什么变大了？",
+      "expected_sources": ["33-prompt-injection-defense.md"],
+      "expected_keywords": ["污染"]
+    },
+    {
+      "query": "被检索到的文档该不该当成可信输入？",
+      "expected_sources": ["33-prompt-injection-defense.md"],
+      "expected_keywords": ["不可信输入"]
+    },
+    {
+      "query": "输出侧的引用校验能拦住什么？",
+      "expected_sources": ["33-prompt-injection-defense.md"],
+      "expected_keywords": ["引用校验"]
+    },
+    {
+      "query": "权限过滤要放在检索阶段还是生成之后？",
+      "expected_sources": ["33-prompt-injection-defense.md"],
+      "expected_keywords": ["检索阶段"]
+    },
+    {
+      "query": "只写模型系列名算是锁定版本吗？",
+      "expected_sources": ["34-model-versioning.md"],
+      "expected_keywords": ["快照"]
+    },
+    {
+      "query": "供应商静默更新模型要怎么发现？",
+      "expected_sources": ["34-model-versioning.md"],
+      "expected_keywords": ["回归集", "漂移"]
+    },
+    {
+      "query": "回滚为什么要求只改配置不改代码？",
+      "expected_sources": ["34-model-versioning.md"],
+      "expected_keywords": ["回滚"]
+    },
+    {
+      "query": "缓存键漏掉一个维度会带来什么问题？",
+      "expected_sources": ["35-cache-invalidation.md"],
+      "expected_keywords": ["越权", "维度"]
+    },
+    {
+      "query": "语义缓存的相似度阈值怎么标定？",
+      "expected_sources": ["35-cache-invalidation.md"],
+      "expected_keywords": ["错误命中"]
+    },
+    {
+      "query": "缓存服务不可用时应该拒绝请求吗？",
+      "expected_sources": ["35-cache-invalidation.md"],
+      "expected_keywords": ["放行", "降级"]
+    },
+    {
+      "query": "同键并发全部未命中要怎么处理？",
+      "expected_sources": ["35-cache-invalidation.md"],
+      "expected_keywords": ["单飞", "击穿"]
+    },
+    {
+      "query": "批量请求的批次是不是越大越好？",
+      "expected_sources": ["36-batch-inference.md"],
+      "expected_keywords": ["长尾"]
+    },
+    {
+      "query": "批次里只有一部分失败该怎么重试？",
+      "expected_sources": ["36-batch-inference.md"],
+      "expected_keywords": ["重试失败", "对齐"]
+    },
+    {
+      "query": "批处理会不会把在线请求的配额吃光？",
+      "expected_sources": ["36-batch-inference.md"],
+      "expected_keywords": ["抢占"]
+    },
+    {
+      "query": "流式响应中途出错最忌讳怎么处理？",
+      "expected_sources": ["37-streaming-errors.md"],
+      "expected_keywords": ["静默截断"]
+    },
+    {
+      "query": "流式请求的重试边界在哪里？",
+      "expected_sources": ["37-streaming-errors.md"],
+      "expected_keywords": ["首字节"]
+    },
+    {
+      "query": "流式请求的超时要分几层来设？",
+      "expected_sources": ["37-streaming-errors.md"],
+      "expected_keywords": ["分层超时"]
+    },
+    {
+      "query": "不做背压会导致什么后果？",
+      "expected_sources": ["37-streaming-errors.md"],
+      "expected_keywords": ["背压"]
+    },
+    {
+      "query": "多轮对话的成本为什么涨得比预期快？",
+      "expected_sources": ["38-context-compression.md"],
+      "expected_keywords": ["轮次"]
+    },
+    {
+      "query": "对话摘要最不该漏掉哪类内容？",
+      "expected_sources": ["38-context-compression.md"],
+      "expected_keywords": ["被排除的选项"]
+    },
+    {
+      "query": "压缩什么时机触发对用户体验影响最小？",
+      "expected_sources": ["38-context-compression.md"],
+      "expected_keywords": ["异步压缩"]
+    },
+    {
+      "query": "压缩会掩盖哪一类问题？",
+      "expected_sources": ["38-context-compression.md"],
+      "expected_keywords": ["跨轮记忆"]
+    },
+    {
+      "query": "全量重建索引有哪两个隐患？",
+      "expected_sources": ["39-incremental-indexing.md"],
+      "expected_keywords": ["引用", "不可用"]
+    },
+    {
+      "query": "块标识怎么做到与位置解耦？",
+      "expected_sources": ["39-incremental-indexing.md"],
+      "expected_keywords": ["内容派生", "解耦"]
+    },
+    {
+      "query": "增量更新为什么特别容易漏掉删除？",
+      "expected_sources": ["39-incremental-indexing.md"],
+      "expected_keywords": ["清单"]
+    },
+    {
+      "query": "答错了怎么区分是检索问题还是生成问题？",
+      "expected_sources": ["40-failure-attribution.md"],
+      "expected_keywords": ["归因"]
+    },
+    {
+      "query": "归因结论用什么实验来验证？",
+      "expected_sources": ["40-failure-attribution.md"],
+      "expected_keywords": ["反事实"]
+    },
+    {
+      "query": "评测运行为什么要保留中间状态？",
+      "expected_sources": ["40-failure-attribution.md"],
+      "expected_keywords": ["中间态"]
+    },
+    {
+      "query": "把温度调高会让输出更有创造力吗？",
+      "expected_sources": ["41-decoding-parameters.md"],
+      "expected_keywords": ["方差"]
+    },
+    {
+      "query": "温度设成零输出就完全可复现了吗？",
+      "expected_sources": ["41-decoding-parameters.md"],
+      "expected_keywords": ["可复现"]
+    },
+    {
+      "query": "解码参数为什么要分组而不是全局统一？",
+      "expected_sources": ["41-decoding-parameters.md"],
+      "expected_keywords": ["参数档位", "档位"]
+    },
+    {
+      "query": "示例给得越多效果一定越好吗？",
+      "expected_sources": ["42-example-selection.md"],
+      "expected_keywords": ["锚定", "表面特征"]
+    },
+    {
+      "query": "动态挑示例只看相似度够不够？",
+      "expected_sources": ["42-example-selection.md"],
+      "expected_keywords": ["难度匹配"]
+    },
+    {
+      "query": "示例集为什么需要定期重新验证？",
+      "expected_sources": ["42-example-selection.md"],
+      "expected_keywords": ["移除示例"]
+    },
+    {
+      "query": "示例里要不要放反例？",
+      "expected_sources": ["42-example-selection.md"],
+      "expected_keywords": ["反例"]
+    },
+    {
+      "query": "评测任务本身应该设成本上限吗？",
+      "expected_sources": ["43-eval-cost-control.md"],
+      "expected_keywords": ["预算"]
+    },
+    {
+      "query": "分层评测是从哪一层开始跑的？",
+      "expected_sources": ["43-eval-cost-control.md"],
+      "expected_keywords": ["规则层"]
+    },
+    {
+      "query": "裁判调用有哪些省钱的叠加手段？",
+      "expected_sources": ["43-eval-cost-control.md"],
+      "expected_keywords": ["缓存"]
+    },
+    {
+      "query": "生成结果为什么要落盘留档？",
+      "expected_sources": ["43-eval-cost-control.md"],
+      "expected_keywords": ["落盘"]
+    },
+    {
+      "query": "中英混合语料里英文段落为什么容易被忽略？",
+      "expected_sources": ["44-multilingual-support.md"],
+      "expected_keywords": ["系统性"]
+    },
+    {
+      "query": "中文分词对稀疏检索的影响是什么？",
+      "expected_sources": ["44-multilingual-support.md"],
+      "expected_keywords": ["分词"]
+    },
+    {
+      "query": "跨语言场景下检索和生成要不要分开看？",
+      "expected_sources": ["44-multilingual-support.md"],
+      "expected_keywords": ["跨语言"]
+    },
+    {
+      "query": "回答的语言应该怎么决定？",
+      "expected_sources": ["44-multilingual-support.md"],
+      "expected_keywords": ["跟随提问语言"]
+    },
+    {
+      "query": "为什么要把拒答做成一条正常路径？",
+      "expected_sources": ["45-safety-and-refusal.md"],
+      "expected_keywords": ["能力"]
+    },
+    {
+      "query": "检索没召回任何相关片段时该怎么办？",
+      "expected_sources": ["45-safety-and-refusal.md"],
+      "expected_keywords": ["超出知识范围"]
+    },
+    {
+      "query": "部分拒答为什么比整体拒答更有用？",
+      "expected_sources": ["45-safety-and-refusal.md"],
+      "expected_keywords": ["部分"]
+    },
+    {
+      "query": "只看拒答率会带来什么偏向？",
+      "expected_sources": ["45-safety-and-refusal.md"],
+      "expected_keywords": ["误拒率"]
+    },
+    {
+      "query": "提示词为什么要当成代码来管理？",
+      "expected_sources": ["09-prompt-engineering.md"],
+      "expected_keywords": ["提示词是代码"]
+    },
+    {
+      "query": "提示词迭代里有哪些常见反模式？",
+      "expected_sources": ["09-prompt-engineering.md"],
+      "expected_keywords": ["反模式"]
+    },
+    {
+      "query": "流式输出在首帧之前和之后有什么不同？",
+      "expected_sources": ["10-streaming-and-concurrency.md"],
+      "expected_keywords": ["首帧"]
+    },
+    {
+      "query": "连接复用能省下哪些开销？",
+      "expected_sources": ["10-streaming-and-concurrency.md"],
+      "expected_keywords": ["连接复用"]
+    },
+    {
+      "query": "语料质量差会给下游带来什么后果？",
+      "expected_sources": ["11-corpus-governance.md"],
+      "expected_keywords": ["垃圾进垃圾出"]
+    },
+    {
+      "query": "语料治理要看哪些质量指标？",
+      "expected_sources": ["11-corpus-governance.md"],
+      "expected_keywords": ["质量指标"]
+    },
+    {
+      "query": "容量规划里哪三种开销必须分开看？",
+      "expected_sources": ["12-capacity-planning.md"],
+      "expected_keywords": ["三个需要分开看的开销"]
+    },
+    {
+      "query": "并发上限是由什么决定的？",
+      "expected_sources": ["12-capacity-planning.md"],
+      "expected_keywords": ["并发上限"]
+    },
+    {
+      "query": "为什么模型系统比一般系统更需要灰度？",
+      "expected_sources": ["13-rollout-and-rollback.md"],
+      "expected_keywords": ["更需要灰度"]
+    },
+    {
+      "query": "回滚为什么要求必须立刻生效？",
+      "expected_sources": ["13-rollout-and-rollback.md"],
+      "expected_keywords": ["回滚要能立刻生效"]
+    },
+    {
+      "query": "接入多个厂商时适配层要负责什么？",
+      "expected_sources": ["14-provider-abstraction.md"],
+      "expected_keywords": ["适配层的职责"]
+    },
+    {
+      "query": "上游不返回用量数据时应该怎么办？",
+      "expected_sources": ["14-provider-abstraction.md"],
+      "expected_keywords": ["用量缺失"]
+    },
+    {
+      "query": "索引和原文的一致性怎么保证？",
+      "expected_sources": ["15-storage-design.md"],
+      "expected_keywords": ["索引与原文的一致性"]
+    },
+    {
+      "query": "派生数据为什么必须能重建？",
+      "expected_sources": ["15-storage-design.md"],
+      "expected_keywords": ["派生数据可重建"]
     }
   ]
 }
