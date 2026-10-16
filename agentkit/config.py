@@ -9,8 +9,12 @@
 
 direct 与 gateway 之所以能共用同一个客户端实现，是因为网关补齐了
 OpenAI 兼容性（响应体 choices[].message.content、流式 delta 信封、
-data: [DONE] 终止帧、/v1/embeddings）。补齐之前它只兼容请求侧，
+data: [DONE] 终止帧；GET /v1/models）。补齐之前它只兼容请求侧，
 响应侧是扁平的，客户端必须写两套解析。
+
+  注意网关**没有** POST /v1/embeddings —— 上游当前用的厂商（DeepSeek）本身
+  就没有 embeddings 端点，转发出去只会是一个必然失败的端点。所以 embedding
+  由谁提供，是 `embedder` 这个独立配置项决定的，不是由 backend 决定的。
 """
 
 from __future__ import annotations
@@ -22,6 +26,10 @@ from pydantic import BaseModel
 
 Backend = Literal["stub", "direct", "gateway"]
 RerankMode = Literal["heuristic", "llm", "off"]
+#: auto   —— 沿用索引自己记录的那个 embedder（没有记录时按 hashing）
+#: hashing —— 强制本地哈希向量（离线、确定、零成本）
+#: client  —— 强制远程 embedding（换它必须整库重建索引）
+EmbedderChoice = Literal["auto", "hashing", "client"]
 
 GATEWAY_DEFAULT_URL = "http://127.0.0.1:8080/v1"
 OPENAI_DEFAULT_URL = "https://api.openai.com/v1"
@@ -49,6 +57,8 @@ class Settings(BaseModel):
 
     chat_model: str = "fake-small"
     embedding_model: str = "fake-embedding"
+    #: 谁来做向量化。与 backend（谁来生成）**完全独立**，见模块开头说明。
+    embedder: EmbedderChoice = "auto"
     temperature: float = 0.2
 
     # 检索

@@ -10,12 +10,14 @@ from __future__ import annotations
 import pytest
 
 from agentkit.config import Settings
+from agentkit.embedder import ClientEmbedder, HashingEmbedder
 from agentkit.llm import (
     OpenAiCompatibleClient,
     StubClient,
     build_client,
     build_embedder,
 )
+from agentkit.store import JsonlVectorStore, write_index_meta
 from agentkit.transport import HttpResult, JsonTransport, TransportError, join_url
 
 
@@ -169,10 +171,46 @@ def test_build_client_selects_stub_offline() -> None:
     assert isinstance(build_client(Settings.for_backend("gateway")), OpenAiCompatibleClient)
 
 
-def test_build_embedder_matches_backend(tmp_path) -> None:
-    assert build_embedder(Settings(), StubClient(Settings())).name == "hashing"
-    gateway = Settings.for_backend("gateway")
-    assert build_embedder(gateway, OpenAiCompatibleClient(gateway)).name.startswith("client:")
+def test_build_embedder_is_decoupled_from_backend(tmp_path) -> None:
+    """embedder 不再跟着 backend 走。
+
+    旧实现是 `backend == "stub" ? hashing : client`，看着省事，实际会制造
+    "用 512 维哈希索引配 1536 维远程查询"的静默错误。这里把解耦后的三条语义钉住。
+    """
+    index = tmp_path / "index.jsonl"
+
+    # 1) 索引没有元数据（老索引）时 auto 落到 hashing —— 仓库随带的索引就是哈希建的
+    fresh = Settings().model_copy(update={"index_path": str(index)})
+    assert build_embedder(fresh, StubClient(fresh)).kind == "hashing"
+    gateway = Settings.for_backend("gateway").model_copy(update={"index_path": str(index)})
+    assert build_embedder(gateway, OpenAiCompatibleClient(gateway)).kind == "hashing"
+
+    # 2) 显式 client 时，任何 backend 都给远程 embedder
+    forced = gateway.model_copy(update={"embedder": "client"})
+    assert build_embedder(forced, OpenAiCompatibleClient(forced)).kind == "client"
+
+    # 3) auto 以索引记录的身份为准：索引说是 client，查询就用 client
+    write_index_meta(index, name="client:text-embedding-3-small", kind="client",
+                     dim=1536, chunks=1)
+    assert build_embedder(gateway, OpenAiCompatibleClient(gateway)).kind == "client"
+
+
+def test_embedder_mismatch_is_a_hard_error(tmp_path) -> None:
+    """索引身份与当前 embedder 对不上时必须报错 —— 跨向量空间比余弦不会自己出错。"""
+    from agentkit.bootstrap import verify_embedder_match
+
+    index = tmp_path / "index.jsonl"
+    write_index_meta(index, name="hashing", kind="hashing", dim=512, chunks=3)
+    store = JsonlVectorStore.load(index)
+
+    verify_embedder_match(store, HashingEmbedder())   # 一致：放行
+
+    client = OpenAiCompatibleClient(Settings.for_backend("gateway"))
+    with pytest.raises(RuntimeError) as excinfo:
+        verify_embedder_match(store, ClientEmbedder(client, "text-embedding-3-small"))
+    message = str(excinfo.value)
+    assert "AGENTKIT_EMBEDDER" in message     # 报错要给出可操作的出路
+    assert "ingest --reset" in message
 
 
 def test_stub_client_is_deterministic_and_free() -> None:

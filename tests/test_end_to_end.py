@@ -15,6 +15,7 @@ from agentkit.chunker import chunk_document
 from agentkit.config import Settings
 from agentkit.evaluate import evaluate_retrieval, load_cases
 from agentkit.retrieve import estimate_tokens
+from agentkit.store import JsonlVectorStore
 
 
 def _app(tmp_path: Path, rerank: str = "heuristic"):
@@ -24,13 +25,24 @@ def _app(tmp_path: Path, rerank: str = "heuristic"):
 
 def test_ingest_builds_index_from_real_corpus(tmp_path: Path, docs_dir: Path) -> None:
     app, settings = _app(tmp_path)
+    # 语料篇数是数据、不是契约：从磁盘数出来，别写死。
+    # （写死过一次 15，扩到 45 篇时这个测试就红了 —— 红的是测试，不是代码。）
+    expected_files = len([p for p in Path(docs_dir).rglob("*")
+                          if p.suffix.lower() in {".md", ".markdown", ".txt"}])
     try:
         summary = ingest(app, [docs_dir], reset=True)
-        assert summary["files"] == 15
-        assert summary["chunks"] > 15          # 平均每篇不止一块
+        assert summary["files"] == expected_files
+        assert summary["chunks"] > expected_files      # 平均每篇不止一块
         assert summary["total_in_index"] == summary["chunks"]
         assert Path(summary["index_path"]).exists()
-        assert len(app.store.sources()) == 15
+        assert len(app.store.sources()) == expected_files
+
+        # 索引身份必须落盘：这是"下次该用哪个 embedder 来查询"的唯一依据
+        assert summary["embedder_kind"] == "hashing"
+        assert summary["embedder_dim"] == 512
+        assert Path(summary["meta_path"]).exists()
+        reopened = JsonlVectorStore.load(settings.index_path)
+        assert reopened.embedder_kind == "hashing"
     finally:
         app.close()
 

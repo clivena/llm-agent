@@ -40,12 +40,17 @@ class App:
         self.runtime.close()
 
 
-def build_app(settings: Settings, rerank: str | None = None) -> App:
+def build_app(settings: Settings, rerank: str | None = None,
+              verify_embedder: bool = True) -> App:
     resolved = settings.model_copy(update={"rerank": rerank}) if rerank else settings
 
     client = build_client(resolved)
     embedder = build_embedder(resolved, client)
     store = JsonlVectorStore.load(resolved.index_path)
+    # ingest 是唯一允许"换 embedder"的操作，所以它要跳过这道校验 ——
+    # 否则索引和 embedder 一旦不一致，连重建索引的路都被自己堵死了。
+    if verify_embedder:
+        verify_embedder_match(store, embedder)
     reranker = build_reranker(resolved.rerank, client)
     retriever = Retriever(store, embedder, resolved, reranker=reranker,
                           fallback=HeuristicReranker())
@@ -54,6 +59,32 @@ def build_app(settings: Settings, rerank: str | None = None) -> App:
     runtime = AgentRuntime(resolved, client, registry, memory)
     return App(settings=resolved, client=client, embedder=embedder, store=store,
                retriever=retriever, runtime=runtime)
+
+
+def verify_embedder_match(store: JsonlVectorStore, embedder: Embedder) -> None:
+    """索引身份与当前 embedder 对账：**知道对不上就报错，不知道就不拦。**
+
+    为什么必须是硬错误而不是警告：跨向量空间比余弦**不会抛出任何异常**，
+    它只会返回一个没有意义但"看起来有分"的数，然后检索结果整体错乱、
+    下游所有指标一起失真。这类错误一旦放过，排查成本极高。
+
+    老索引没有元数据（本项目加这个字段之前的产物）时无从判断，
+    不拦 —— 此时由 `VectorStore.search` 的维度硬校验兜底。
+    """
+    recorded = store.embedder_kind
+    if not recorded or recorded == embedder.kind:
+        return
+    raise RuntimeError(
+        f"索引是用 `{store.embedder_name}`（{embedder_kind_label(recorded)}）建的，"
+        f"当前 embedder 是 `{embedder.name}`（{embedder_kind_label(embedder.kind)}）："
+        "两者不在同一向量空间，检索出来的分数没有意义。\n"
+        f"  继续用这个索引：设 AGENTKIT_EMBEDDER={recorded}\n"
+        "  换 embedder    ：agentkit ingest --reset 重建整个索引"
+    )
+
+
+def embedder_kind_label(kind: str) -> str:
+    return {"hashing": "本地哈希向量", "client": "远程 embedding"}.get(kind, kind)
 
 
 def iter_source_files(paths: list[str | Path]) -> list[Path]:
@@ -100,13 +131,20 @@ def ingest(app: App, paths: list[str | Path], reset: bool = False,
         total_chunks += len(document.chunks)
         per_file.append({"source": source, "chunks": len(document.chunks)})
 
+    # 落盘前把"我是谁建的"写进 store，save() 会连同 meta 一起写出去。
+    # 这一步是索引能安全复用的前提：下次加载时才知道该用哪个 embedder 来查询。
+    app.store.embedder_name = app.embedder.name
+    app.store.embedder_kind = app.embedder.kind
     app.store.save()
     return {
         "files": len(files),
         "chunks": total_chunks,
         "total_in_index": len(app.store),
         "embedder": app.embedder.name,
+        "embedder_kind": app.embedder.kind,
+        "embedder_dim": app.store.vector_dim(),
         "index_path": str(app.settings.index_path),
+        "meta_path": str(app.store.meta_path),
         "per_file": per_file,
     }
 

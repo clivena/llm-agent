@@ -37,7 +37,8 @@ DEFAULT_CASES = ROOT / "data" / "eval" / "queries.json"
 
 
 def _settings(backend: str, index: str | None, base_url: str | None = None,
-              api_key: str | None = None, chat_model: str | None = None) -> Settings:
+              api_key: str | None = None, chat_model: str | None = None,
+              embedder: str | None = None) -> Settings:
     settings = Settings.from_env(backend)  # type: ignore[arg-type]
     updates: dict[str, object] = {}
     if index:
@@ -48,6 +49,8 @@ def _settings(backend: str, index: str | None, base_url: str | None = None,
         updates["api_key"] = api_key
     if chat_model:
         updates["chat_model"] = chat_model
+    if embedder:
+        updates["embedder"] = embedder
     return settings.model_copy(update=updates) if updates else settings
 
 
@@ -98,10 +101,13 @@ def ingest_cmd(
     reset: bool = typer.Option(False, "--reset", help="清空已有索引后重建"),
     base_url: str = typer.Option(None, help="覆盖 base_url"),
     api_key: str = typer.Option(None, help="覆盖 api_key"),
+    embedder: str = typer.Option(
+        None, help="auto | hashing | client（换 client 必须配 --reset 整库重建）"),
 ) -> None:
     """把文档切片、向量化并写入索引。"""
-    settings = _settings(backend, index, base_url, api_key)
-    instance = build_app(settings)
+    settings = _settings(backend, index, base_url, api_key, embedder=embedder)
+    # ingest 是唯一允许改变索引身份的操作，跳过一致性校验（否则改不动）。
+    instance = build_app(settings, verify_embedder=False)
     try:
         summary = ingest(instance, paths or [str(DEFAULT_DOCS)], reset=reset)
     finally:
@@ -119,6 +125,10 @@ def ingest_cmd(
     console.print(table)
     console.print(f"文件 {summary['files']} 个 · 本次写入 {summary['chunks']} 块 · "
                   f"索引共 {summary['total_in_index']} 块 · 落盘 {summary['index_path']}")
+    # 把索引身份打出来：这是"这个索引能被哪些 embedder 安全复用"的唯一依据，
+    # 不打印的话，换了 embedder 之后只能靠检索结果不对劲来发现。
+    console.print(f"[dim]索引身份：kind={summary['embedder_kind']} · "
+                  f"维度={summary['embedder_dim']} · 元数据={summary['meta_path']}[/dim]")
 
 
 @app.command()
@@ -129,11 +139,12 @@ def ask(
     index: str = typer.Option(None, help="索引文件路径"),
     base_url: str = typer.Option(None, help="覆盖 base_url"),
     api_key: str = typer.Option(None, help="覆盖 api_key"),
+    embedder: str = typer.Option(None, help="auto | hashing | client（默认沿用索引自己的）"),
     show_trace: bool = typer.Option(True, "--trace/--no-trace", help="是否打印推理轨迹"),
     as_json: bool = typer.Option(False, "--json", help="以 JSON 输出（便于脚本消费）"),
 ) -> None:
     """问一个问题，返回带引用的答案、推理轨迹与本次开销。"""
-    settings = _settings(backend, index, base_url, api_key)
+    settings = _settings(backend, index, base_url, api_key, embedder=embedder)
     instance = build_app(settings, rerank=rerank)
     try:
         if len(instance.store) == 0:
@@ -165,9 +176,10 @@ def chat(
     rerank: str = typer.Option(None, help="heuristic | llm | off"),
     index: str = typer.Option(None, help="索引文件路径"),
     base_url: str = typer.Option(None, help="覆盖 base_url"),
+    embedder: str = typer.Option(None, help="auto | hashing | client（默认沿用索引自己的）"),
 ) -> None:
     """多轮对话（带滚动摘要记忆）。输入 exit 退出。"""
-    settings = _settings(backend, index, base_url)
+    settings = _settings(backend, index, base_url, embedder=embedder)
     instance = build_app(settings, rerank=rerank)
     console.print("[dim]多轮模式：历史超预算会自动压缩成摘要。输入 exit 退出。[/dim]")
     try:
@@ -194,9 +206,10 @@ def eval_cmd(
     rerank: str = typer.Option(None, help="heuristic | llm | off"),
     cases: str = typer.Option(None, help="评测集路径"),
     index: str = typer.Option(None, help="索引文件路径"),
+    embedder: str = typer.Option(None, help="auto | hashing | client（默认沿用索引自己的）"),
 ) -> None:
     """检索评测：同一次检索结果，按召回位次与重排位次分别算指标。"""
-    settings = _settings(backend, index)
+    settings = _settings(backend, index, embedder=embedder)
     instance = build_app(settings, rerank=rerank)
     try:
         if len(instance.store) == 0:
@@ -220,13 +233,14 @@ def bench(
     index: str = typer.Option(None, help="索引文件路径"),
     base_url: str = typer.Option(None, help="覆盖 base_url（direct 模式常用）"),
     api_key: str = typer.Option(None, help="覆盖 api_key"),
+    embedder: str = typer.Option(None, help="auto | hashing | client（默认沿用索引自己的）"),
     k: int = typer.Option(6, help="问题集截断到前 k 条，控制成本"),
 ) -> None:
     """跨后端基准：同一组问题跑不同后端，对比调用次数 / token / 成本 / 缓存命中。"""
     loaded = load_cases(questions or DEFAULT_CASES)[:k]
     reports = []
     for name in [b.strip() for b in backends.split(",") if b.strip()]:
-        settings = _settings(name, index, base_url, api_key)
+        settings = _settings(name, index, base_url, api_key, embedder=embedder)
         try:
             instance = build_app(settings, rerank=rerank)
         except Exception as e:  # noqa: BLE001 — 某个后端不可用不应中断整轮对比
@@ -258,11 +272,12 @@ def serve(
     backend: str = typer.Option("stub", help="stub | direct | gateway"),
     rerank: str = typer.Option(None, help="heuristic | llm | off"),
     index: str = typer.Option(None, help="索引文件路径"),
+    embedder: str = typer.Option(None, help="auto | hashing | client（默认沿用索引自己的）"),
     host: str = typer.Option("127.0.0.1", help="监听地址"),
     port: int = typer.Option(8765, help="监听端口"),
 ) -> None:
     """启动本地演示控制台（浏览器里直接提问）。"""
-    settings = _settings(backend, index)
+    settings = _settings(backend, index, embedder=embedder)
     instance = build_app(settings, rerank=rerank)
     if len(instance.store) == 0:
         console.print("[red]索引为空。先运行：agentkit ingest[/red]")

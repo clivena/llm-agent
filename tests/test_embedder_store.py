@@ -15,7 +15,12 @@ import pytest
 
 from agentkit.embedder import CachedEmbedder, ClientEmbedder, HashingEmbedder
 from agentkit.models import Chunk
-from agentkit.store import InMemoryVectorStore, JsonlVectorStore, cosine
+from agentkit.store import (
+    InMemoryVectorStore,
+    JsonlVectorStore,
+    cosine,
+    read_index_meta,
+)
 
 
 def _chunk(cid: str, text: str, source: str = "a.md", ordinal: int = 0) -> Chunk:
@@ -93,6 +98,60 @@ def test_cosine_edge_cases() -> None:
     assert cosine([], []) == 0.0
     assert cosine([0.0, 0.0], [1.0, 1.0]) == 0.0  # 零向量不能除零
     assert math.isclose(cosine([1.0, 0.0], [2.0, 0.0]), 1.0)
+
+
+def test_cosine_rejects_dimension_mismatch() -> None:
+    """维度不一致必须报错，**不能截断**。
+
+    旧实现用 `min(len(a), len(b))`，于是 512 维查询比 1536 维索引时会
+    安安静静地只比前 512 个分量，返回一个没有意义但"看起来有分"的数。
+    这类错误不崩溃、只让检索结果整体错乱，是最难排查的一种。
+    """
+    with pytest.raises(ValueError) as excinfo:
+        cosine([0.1] * 512, [0.1] * 1536)
+    assert "维度不一致" in str(excinfo.value)
+
+
+def test_store_search_rejects_dimension_mismatch() -> None:
+    store = InMemoryVectorStore()
+    store.add([_chunk("c1", "文本")], [[0.1] * 512])
+    with pytest.raises(ValueError) as excinfo:
+        store.search([0.1] * 64, 1)
+    message = str(excinfo.value)
+    assert "512" in message and "64" in message
+    assert "ingest --reset" in message   # 报错要给出出路
+
+
+def test_store_reports_vector_dim() -> None:
+    store = InMemoryVectorStore()
+    assert store.vector_dim() is None          # 空索引没有维度可报
+    store.add([_chunk("c1", "文本")], [[0.1] * 8])
+    assert store.vector_dim() == 8
+
+
+def test_index_meta_roundtrip(tmp_path: Path) -> None:
+    """索引身份必须落盘并能读回 —— 否则"这个索引该配哪个 embedder"无从判断。"""
+    path = tmp_path / "index.jsonl"
+    store = JsonlVectorStore(path)
+    store.add([_chunk("c1", "文本")], [[0.5] * 4])
+    store.embedder_name = "hashing"
+    store.embedder_kind = "hashing"
+    store.save()
+
+    assert store.meta_path.exists()
+    reloaded = JsonlVectorStore.load(path)
+    assert reloaded.embedder_name == "hashing"
+    assert reloaded.embedder_kind == "hashing"
+    assert read_index_meta(path)["dim"] == 4
+    assert read_index_meta(path)["chunks"] == 1
+
+
+def test_read_index_meta_returns_none_when_absent_or_broken(tmp_path: Path) -> None:
+    """读不出来要返回 None（"不知道"），而不是抛异常或猜一个默认值。"""
+    path = tmp_path / "index.jsonl"
+    assert read_index_meta(path) is None
+    path.with_name("index.meta.json").write_text("{ 坏 json", encoding="utf-8")
+    assert read_index_meta(path) is None
 
 
 def test_in_memory_store_upserts_by_chunk_id(store: InMemoryVectorStore) -> None:

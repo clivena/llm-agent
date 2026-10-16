@@ -5,6 +5,11 @@
 补齐之前网关的响应是扁平结构、流式是裸文本，客户端必须写两套解析，
 所谓"可切换后端"就只剩口号。
 
+（2026-10-15 备注：那段兼容性改动**当时并没有真的落地**，是后来补的；
+在此之前 `gateway` 后端一跑就报"响应里没有 choices"。
+另外"生成后端"和"embedder"是两件事，别混：前者由 `backend` 选，
+后者由 `embedder` 选，理由见 build_embedder 的注释。）
+
 StubClient 不是 mock。它跑在同一个 ReAct 循环、同一套提示词上，
 只是决策规则写死了：解析真实提示词里的标记，给出确定的动作或答案。
 因此离线跑出来的 trace、引用、检索数字，和联网跑出来的形状完全一致。
@@ -28,6 +33,7 @@ from agentkit.prompts import (
     RERANK_SYSTEM,
     SUMMARIZE_SYSTEM,
 )
+from agentkit.store import read_index_meta
 from agentkit.transport import JsonTransport, TransportError, join_url
 
 CACHE_HIT_HEADER = "x-cache-hit"
@@ -289,11 +295,32 @@ def build_client(settings: Settings) -> LlmClient:
     return OpenAiCompatibleClient(settings)
 
 
+def resolve_embedder_choice(settings: Settings) -> str:
+    """把 embedder 配置解析成具体种类（hashing / client）。
+
+    `auto` 的含义是**沿用索引自己记录的那个 embedder** —— 因为索引里的向量和
+    查询向量必须来自同一个 embedder，否则余弦是在两个向量空间之间比。
+    索引没有元数据（老索引）时按 hashing：仓库里随带的索引就是哈希建的。
+    """
+    if settings.embedder in ("hashing", "client"):
+        return settings.embedder
+    meta = read_index_meta(settings.index_path)
+    kind = (meta or {}).get("kind")
+    return kind if kind in ("hashing", "client") else "hashing"
+
+
 def build_embedder(settings: Settings, client: LlmClient):
-    """stub 用本地哈希向量；其余后端走远程 embedding（带缓存）。"""
+    """按 `settings.embedder` 选 embedder —— **不再跟 backend 绑定**。
+
+    旧实现是 `backend == "stub" ? hashing : client`，看着省事，实际埋了一个
+    "跨向量空间比余弦"的静默错误：索引用 512 维哈希向量建，查询却用远程模型的
+    1536 维向量，cosine 只比前 512 个分量，返回一个没有意义但"看起来有分"的数。
+    更糟的是在没配 embeddings 的环境里它表现为 `search_knowledge_base` 静默失败，
+    模型照着"资料不足"作答 —— 整轮 benchmark 跑得完、指标全是假的。
+    """
     from agentkit.embedder import ClientEmbedder
 
-    if settings.backend == "stub":
+    if resolve_embedder_choice(settings) == "hashing":
         return HashingEmbedder()
     return ClientEmbedder(client, settings.embedding_model)
 
