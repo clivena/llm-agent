@@ -215,9 +215,11 @@ tests/             143 个用例，全部离线（语料扩容后约 17 秒跑�
 
 - [llm-gateway](https://github.com/clivena/llm-gateway) —— 访问层：配额（Lua 原子扣减）、语义缓存、路由选档、成本账本、traceId
 - [llm-eval](https://github.com/clivena/llm-eval) —— 质量层：规则打分、语义打分、裁判校准、回归卡关
+- [llm-dashboard](https://github.com/clivena/llm-dashboard) —— 展示层：配额与成本看板、请求链路演示、
+  评测结果面板（检索快照由本仓 `scripts/export-retrieval.py` 产出）
 - **agentkit（本仓库）** —— 应用层：把上面两层的能力用起来
 
-三层各自可独立运行，合起来是一条完整的"接入 → 质量 → 应用"闭环。
+四层各自可独立运行，合起来是一条完整的"接入 → 质量 → 应用 → 可视"闭环。
 `gateway` 后端就是这条闭环的接线口：Agent 复用网关的配额、缓存与账本，
 `X-Cache-Hit` / `X-Trace-Id` 直接落进 `UsageStats`，
 所以"这次回答有没有命中缓存、花了多少、traceId 是什么"在一张表里能看到。
